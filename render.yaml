@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tap-token
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_DATABASE
+        value: govqueue
+      - key: MONGODB_URI
+        sync: false

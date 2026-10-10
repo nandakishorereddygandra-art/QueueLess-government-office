@@ -1,0 +1,16 @@
+{
+  "name": "govqueue-prototype",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A civic queue management prototype with citizen, staff, and admin portals.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.7",
+    "mongodb": "^6.17.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

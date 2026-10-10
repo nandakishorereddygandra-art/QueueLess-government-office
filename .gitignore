@@ -1,0 +1,9 @@
+node_modules/
+.env
+data/*.sqlite
+data/*.sqlite-*
+
+.env*
+!.env.example
+output/
+.tap-token-pptx-build/

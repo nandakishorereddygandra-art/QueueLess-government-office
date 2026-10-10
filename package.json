@@ -4,7 +4,8 @@
   "private": true,
   "description": "A civic queue management prototype with citizen, staff, and admin portals.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "dotenv": "^18.0.7",

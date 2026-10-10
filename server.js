@@ -74,7 +74,7 @@ function requireOfficer(req, res, roles) {
 }
 
 async function loadStore() {
-  fs.mkdirSync(DATA, { recursive: true });
+  if (!process.env.VERCEL) fs.mkdirSync(DATA, { recursive: true });
   mongoClient = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
   await mongoClient.connect();
   mongoDb = mongoClient.db(MONGODB_DATABASE);
@@ -168,6 +168,8 @@ function send(res, status, body, type = 'application/json; charset=utf-8', heade
 }
 
 function body(req) {
+  // Vercel's Node runtime may parse request bodies before invoking the function.
+  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', c => {
@@ -199,18 +201,17 @@ function todayISO() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-// Connect to MongoDB and hydrate the app state before accepting requests.
-loadStore().then(() => {
-  server.listen(PORT, () => console.log(`Tap Token is running at http://localhost:${PORT}`));
+// In Vercel, each request invokes this handler; local development still starts
+// the same HTTP server through the start script below.
+const databaseReady = loadStore().then(() => {
   console.log(`Connected to MongoDB database "${mongoDb.databaseName}".`);
 }).catch(err => {
   console.error('Could not connect to MongoDB:', err.message);
-  console.error('Start MongoDB or configure MONGODB_URI with a reachable connection string.');
-  process.exit(1);
+  throw err;
 });
 
 // SSE Heartbeat interval
-setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   for (const client of sseClients) {
     try {
       client.write(': ping\n\n');
@@ -219,6 +220,7 @@ setInterval(() => {
     }
   }
 }, 25000);
+heartbeatTimer.unref?.();
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -559,4 +561,23 @@ const server = http.createServer(async (req, res) => {
     send(res, 500, { error: 'Something went wrong. Please try again.' });
   }
 });
+
+async function handler(req, res) {
+  try {
+    await databaseReady;
+    server.emit('request', req, res);
+  } catch (error) {
+    console.error('Request could not connect to MongoDB:', error.message);
+    if (!res.headersSent) send(res, 503, { error: 'The database is unavailable. Please try again shortly.' });
+    else res.end();
+  }
+}
+
+if (require.main === module) {
+  databaseReady.then(() => {
+    server.listen(PORT, () => console.log(`Tap Token is running at http://localhost:${PORT}`));
+  }).catch(() => process.exitCode = 1);
+}
+
+module.exports = handler;
 
